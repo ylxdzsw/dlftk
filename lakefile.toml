@@ -1,0 +1,6 @@
+name = "dlftk"
+version = "0.1.0"
+defaultTargets = ["DLFTK"]
+
+[[lean_lib]]
+name = "DLFTK"
