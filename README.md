@@ -62,7 +62,30 @@ DLFTK/
     Transitions.lean -- inject / transmit / process / consume / ack / retransmit
     Scenario/
       TwoHostStore.lean  -- the shared-vs-separate case study (native_decide)
+  Switch/
+    Types.lean              -- shared port/lane/VOQ helpers
+    CreditConservative.lean -- routed ingress VOQ holds upstream credit
+    CreditSplit.lean        -- ingress credit is freed on route-to-VOQ
+    PFC.lean                -- threshold pause/resume per priority
 ```
+
+## Switch flow-control libraries
+
+`DLFTK.Switch` provides selectable switch abstractions for future studies:
+
+- `CreditConservative`: packet arrival immediately chooses an output and enters
+  a VOQ; the VOQ is the upstream credit-accounted resource, so credit returns
+  only when the packet transmits out of the switch. This simplifies dependency
+  analysis and is conservative.
+- `CreditSplit`: models common credit fabrics more directly: packet arrival
+  consumes an upstream-facing ingress buffer, route-to-VOQ frees that ingress
+  buffer and returns upstream credit, and downstream transmission consumes a
+  separate next-hop credit.
+- `PFC`: models Ethernet Priority Flow Control as threshold pause/resume state
+  per input/priority, with downstream pause state controlled by the environment.
+
+Each library exports its own `Params`, `St`, `system`, and `hasWork`, so a study
+can choose the model by importing the corresponding module.
 
 ## Build
 
