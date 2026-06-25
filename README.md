@@ -15,8 +15,7 @@ The repo splits into two layers:
 | **Library** | `DLFTK/` | Versioned models, topologies, analysis tools |
 | **Studies** | `studies/<id>/` | Independent research threads with pinned dlftk deps |
 
-See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for versioning, study
-layout, and how to compose models via Lean imports.
+See **[AGENTS.md](AGENTS.md)** for repo layout, conventions, and where to put changes.
 
 ## Approach
 

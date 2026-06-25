@@ -13,4 +13,4 @@ Then edit:
 3. Rename `StudyTemplate.lean` → `StudyMyStudyName.lean` and update `lakefile.toml`
 4. Add claim modules; select models via `import DLFTK...` lines
 
-See `docs/ARCHITECTURE.md` for the full framework design.
+See `AGENTS.md` for repo layout and conventions.
