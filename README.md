@@ -54,8 +54,8 @@ import DLFTK.Switch.Topology.OneLayerClos
 | [ub-vl-separation](studies/ub-vl-separation/) | shared vs separate VL deadlock on UB | v0.1.0 |
 | [clos-fabric](studies/clos-fabric/) | CLOS cross traffic + broken-link failover | v0.1.0 |
 
-Each study has `README.md` (results) and `lakefile.toml` (build + dlftk pin).
-Commit `lake-manifest.json` when a study is frozen.
+Each study has a short `README.md` (summary) and `report.md` (full research
+journal). Claims live in `.lean` files; pin dlftk via `lakefile.toml`.
 
 ## Build
 

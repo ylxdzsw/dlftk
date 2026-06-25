@@ -1,44 +1,36 @@
-# Study: CLOS fabric and broken-link failover
+# CLOS fabric and broken-link failover
 
-**dlftk pin:** `v0.1.0` (see `lakefile.toml` `rev` when frozen; `path = "../.."` during monorepo dev)
+**dlftk pin:** v0.1.0
 
-## Question
+## Motivation
 
-On a one-layer CLOS with parallel planes, can traffic failover to surviving
-planes after a link/plane failure? When does residual state on the dead plane
-cause deadlock?
+Scale-up clusters use parallel fabric planes (one-layer CLOS). When a
+host↔plane link fails, can traffic continue on surviving planes?
 
-## Models
+## Approach
 
-- `DLFTK.Switch.CreditConservative`
-- `DLFTK.Switch.Topology.OneLayerClos`
+Compose `CreditConservative` switches into a full host–plane mesh. Model
+bidirectional link faults via `linkUp` in `Params`. Four broken-plane scenarios
+with BFS + `native_decide`.
 
-## Results
+## Key results
 
-### Cross traffic (`OneLayerClos.lean`)
+**Cross traffic (healthy fabric):** tight and relaxed VOQ sizing both
+deadlock-free (80 / 304 states).
 
-| design | reachable states | result |
-|--------|------------------|--------|
-| tight buffers | 80 (saturated) | deadlock-free |
-| relaxed VOQ | 304 (saturated) | deadlock-free |
-
-### Broken plane 0 (`BrokenLink.lean`)
+**Plane 0 failed:**
 
 | scenario | result |
 |----------|--------|
 | failover to plane 1 | deadlock-free |
-| stuck egress on dead plane | **deadlocks** |
-| stuck VOQ on dead plane | **deadlocks** |
-| drain ingress, then failover | deadlock-free |
+| packet stuck in dead-plane egress | **deadlocks** |
+| packet stuck in dead-plane VOQ | **deadlocks** |
+| drain host ingress, then failover | deadlock-free |
 
-## Build
+Failover works only if no residual work remains on the failed plane.
 
-```
+**Code:** `OneLayerClos.lean`, `BrokenLink.lean` · **Journal:** [report.md](report.md)
+
+```bash
 lake build StudyClosFabric
-```
-
-Standalone:
-
-```
-cd studies/clos-fabric && lake build
 ```

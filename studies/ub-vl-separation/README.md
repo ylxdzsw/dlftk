@@ -1,33 +1,30 @@
-# Study: UB virtual-lane separation
+# UB virtual-lane separation
 
-**dlftk pin:** `v0.1.0` (see `lakefile.toml` `rev` when frozen; `path = "../.."` during monorepo dev)
+**dlftk pin:** v0.1.0
 
-## Question
+## Motivation
 
-Does sharing a virtual lane between store requests and responses create
-message-dependent deadlock on a two-node UB link?
+Scale-up fabrics (UB, etc.) multiplex requests and responses on shared buffer
+pools. A natural design puts both on one virtual lane; a common mitigation
+dedicates lanes per message class.
 
-## Models
+## Approach
 
-- `DLFTK.UB.Transitions` — two-node UB with credit, VL, source-ordering, retry
+Two-node UB link, both hosts streaming non-posted stores. Compare `VLMap.shared`
+vs `VLMap.separate`. Bounded BFS over the reachable set; claims via
+`native_decide` with saturation witnesses.
 
-## Results
+## Key results
 
-| design | reachable states | result |
-|--------|------------------|--------|
-| **shared VL** (req+resp on VL 0) | 1639 (saturated) | **deadlocks** |
-| **separate VL** (req→0, resp→1) | 18976 (saturated) | **deadlock-free** |
+| design | states | result |
+|--------|--------|--------|
+| shared VL (req+resp on lane 0) | 1639 | **deadlocks** |
+| separate VL (req→0, resp→1) | 18976 | **deadlock-free** |
 
-## Build
+Separating lanes breaks the req→resp dependency cycle.
 
-From repo root:
+**Code:** `TwoHostStore.lean` · **Journal:** [report.md](report.md)
 
-```
+```bash
 lake build StudyUbVlSeparation
-```
-
-Standalone (pinned path dep during dev):
-
-```
-cd studies/ub-vl-separation && lake build
 ```

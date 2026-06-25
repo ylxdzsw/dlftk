@@ -17,6 +17,18 @@ PFC, Topology/OneLayerClos).
 
 **Studies today:** `ub-vl-separation`, `clos-fabric`.
 
+## Study documentation
+
+Each study has two markdown files:
+
+| File | Audience | Content |
+|------|----------|---------|
+| `README.md` | Quick orientation | Motivation, approach, key results, build command, link to report |
+| `report.md` | Research journal | Full narrative: hypotheses, model choices, parameter search, failed attempts, rejected ideas, witnesses, open follow-ups |
+
+Keep README short (half a screen). Put everything else — including dead ends —
+in `report.md`. Claims live in `.lean` files; prose docs do not replace proofs.
+
 ## Conventions
 
 Every model/topology exports: `Params`, `St`, `system`, `hasWork`.
@@ -37,6 +49,7 @@ claims with `reachableSaturated` when possible.
 |--------|----------|
 | Reusable protocol/switch/topology | `DLFTK/` |
 | Hypothesis, params, theorems | `studies/<id>/` |
+| Research narrative, dead ends | `studies/<id>/report.md` |
 | Shared between studies | promote to `DLFTK/`, don't copy |
 
 Core semver in root `lakefile.toml`. Tag releases `v0.x.y`. Studies pin
@@ -55,7 +68,7 @@ cd studies/clos-fabric && lake build   # standalone study
 ```
 
 New study: copy `studies/_template/`, rename root module, list all `.lean`
-files in `roots`, write README (Question / Models / Results / dlftk pin).
+files in `roots`, write `README.md` (summary) and `report.md` (journal).
 
 ## Roadmap (core only)
 

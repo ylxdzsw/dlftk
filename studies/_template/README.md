@@ -1,16 +1,28 @@
 # Study template
 
-Copy this folder to start a new study:
+Copy: `cp -r studies/_template studies/my-study-name`
 
+Then edit `lakefile.toml`, rename `StudyTemplate.lean`, add claims, and fill in
+the two docs below. See `AGENTS.md`.
+
+---
+
+# Study title
+
+**dlftk pin:** v0.x.y
+
+## Motivation
+
+One paragraph: why this study exists.
+
+## Approach
+
+One paragraph: models, method, workload.
+
+## Key results
+
+Brief table or bullet list. Link to [report.md](report.md) for full journal.
+
+```bash
+lake build StudyTemplate
 ```
-cp -r studies/_template studies/my-study-name
-```
-
-Then edit:
-
-1. `lakefile.toml` — package name, roots, dlftk `rev` when frozen
-2. `README.md` — question, models, results
-3. Rename `StudyTemplate.lean` → `StudyMyStudyName.lean` and update `lakefile.toml`
-4. Add claim modules; select models via `import DLFTK...` lines
-
-See `AGENTS.md` for repo layout and conventions.
