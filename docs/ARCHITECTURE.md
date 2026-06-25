@@ -9,7 +9,7 @@ library versions and compose only the features they need.
 | Goal | Mechanism |
 |------|-----------|
 | Core evolves without breaking old papers | Semantic versioning + git tags on `dlftk` |
-| Studies stay reproducible | Each study records `dlftk_version` and builds against a pinned `rev` |
+| Studies stay reproducible | `lakefile.toml` `rev` + auto-generated `lake-manifest.json` |
 | Flexible model / feature selection | Studies import only the modules they need; no monolithic scenario tree in core |
 | Multiple concurrent research threads | One folder per study; no cross-imports between studies |
 | Executable claims stay cheap | Shared `DLFTK.Core` + `DLFTK.Analysis` search layer |
@@ -37,15 +37,15 @@ dlftk/                          # Lake package: the library (semver)
 │           └── OneLayerClos.lean
 ├── studies/                    # research artifacts (not part of the library API)
 │   ├── ub-vl-separation/
-│   │   ├── study.toml          # manifest: id, dlftk pin, models used
-│   │   ├── README.md           # human-readable result summary
-│   │   ├── lakefile.toml       # standalone build; pins dlftk rev
-│   │   ├── lean-toolchain      # usually same as core; may diverge later
+│   │   ├── README.md           # question, models, results (for humans)
+│   │   ├── lakefile.toml       # build + dlftk dependency pin
+│   │   ├── lake-manifest.json  # auto lockfile (commit when frozen)
+│   │   ├── lean-toolchain
 │   │   └── StudyUbVlSeparation.lean
 │   └── clos-fabric/
-│       ├── study.toml
 │       ├── README.md
 │       ├── lakefile.toml
+│       ├── lake-manifest.json
 │       ├── lean-toolchain
 │       ├── StudyClosFabric.lean
 │       ├── OneLayerClos.lean
@@ -67,8 +67,11 @@ dlftk/                          # Lake package: the library (semver)
 
 - hypothesis, parameters, workloads, init states
 - `#eval` diagnostics and `native_decide` claims
-- `README.md` results table for humans
-- `study.toml` machine-readable manifest
+- `README.md` — question, models used, results table
+- `lakefile.toml` — build config and dlftk version pin
+
+No separate manifest file is required. Model/feature selection is visible in
+Lean `import` lines; reproducibility comes from Lake's dependency fields.
 
 ## Versioning
 
@@ -88,34 +91,22 @@ Release process:
 2. Tag: `git tag v0.2.0 && git push origin v0.2.0`.
 3. Record changelog (what models/steps changed).
 
-Studies **never** bump the library version; they pin a tag.
+Studies **never** bump the library version; they pin a tag in `lakefile.toml`.
 
-### Study manifest (`study.toml`)
+### Study metadata — three files, no extra manifest
 
-Each study carries metadata (TOML for easy parsing in CI):
+Each study needs only:
 
-```toml
-id = "clos-fabric"
-title = "One-layer CLOS fabric and broken-link failover"
-dlftk_version = "0.1.0"          # semver the study was written against
-dlftk_rev = "v0.1.0"             # exact git tag / commit for reproduction
+| File | Role |
+|------|------|
+| `lakefile.toml` | Build target, **dlftk dependency pin** (`rev`) |
+| `lake-manifest.json` | Auto-generated lock (commit when study is frozen) |
+| `README.md` | Question, models, results — for humans |
+| `*.lean` | Claims; **`import` lines = model/feature selection** |
 
-[models]
-ub = false
-switch = ["CreditConservative"]
-topology = ["OneLayerClos"]
-
-[features]
-link_faults = true
-cross_traffic = true
-
-[[claims]]
-name = "failover_deadlock_free"
-file = "BrokenLink.lean"
-line = 42
-```
-
-CI can verify: checkout `dlftk_rev`, build study, check claims still pass.
+`study.toml` was considered but dropped: it duplicated `lakefile.toml` (pin),
+README (description), and Lean sources (models, claims). Add a separate manifest
+only if you later need machine-readable claim registries for CI.
 
 ### Pinning dependencies in `studies/*/lakefile.toml`
 
@@ -133,12 +124,14 @@ After a study is published / frozen:
 [[require]]
 name = "dlftk"
 git = "https://github.com/ylxdzsw/dlftk.git"
-rev = "v0.1.0"
+rev = "v0.1.0"   # ← this is the version pin
 ```
 
-To upgrade a study to a newer library, copy the folder (or branch), bump
-`dlftk_rev`, fix breakages, update claims — the old folder stays as the
-historical record.
+Run `lake update` once, then commit `lake-manifest.json` — Lake records the
+resolved revision, like a lockfile.
+
+To upgrade a study: copy the folder (or branch), bump `rev`, run `lake build`,
+fix breakages — the old folder stays as the historical record.
 
 ## Composing models and features
 
@@ -167,10 +160,10 @@ in metaprograms — only add when a study actually needs runtime model picking.
 ## Study lifecycle
 
 ```
-1. scaffold     lake init study from template (studies/_template/)
+1. scaffold     copy `studies/_template/`
 2. develop      import dlftk modules; iterate on model/workload
-3. freeze       fill study.toml, write README results table
-4. pin          set dlftk_rev to a release tag
+3. freeze       write README results table; set `rev` in lakefile.toml
+4. lock         `lake update && git add lake-manifest.json`
 5. maintain     new library version → new study folder or explicit upgrade PR
 ```
 
@@ -234,11 +227,10 @@ Copy `studies/_template/`:
 
 ```
 studies/my-study/
-├── study.toml
 ├── README.md
 ├── lakefile.toml
-├── lean-toolchain -> ../../lean-toolchain
-└── StudyMyStudy.lean    # imports sibling modules + re-exports for Lake root
+├── lean-toolchain
+└── StudyMyStudy.lean    # imports sibling claim modules
 ```
 
 Minimum `StudyMyStudy.lean`:
@@ -249,5 +241,5 @@ import DLFTK.Analysis
 import MyClaim
 ```
 
-Minimum `README.md` sections: **Question**, **Models**, **Setup**, **Results**,
-**dlftk pin**.
+Minimum `README.md` sections: **Question**, **Models**, **Results**, **dlftk pin**
+(pointing at `lakefile.toml` `rev`).

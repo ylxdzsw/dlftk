@@ -16,7 +16,7 @@ The repo splits into two layers:
 | **Studies** | `studies/<id>/` | Independent research threads with pinned dlftk deps |
 
 See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for versioning, study
-manifests, and how to compose models/features.
+layout, and how to compose models via Lean imports.
 
 ## Approach
 
@@ -55,8 +55,8 @@ import DLFTK.Switch.Topology.OneLayerClos
 | [ub-vl-separation](studies/ub-vl-separation/) | shared vs separate VL deadlock on UB | v0.1.0 |
 | [clos-fabric](studies/clos-fabric/) | CLOS cross traffic + broken-link failover | v0.1.0 |
 
-Each study has `study.toml` (machine metadata), `README.md` (results), and its
-own `lakefile.toml` for standalone builds against a pinned library revision.
+Each study has `README.md` (results) and `lakefile.toml` (build + dlftk pin).
+Commit `lake-manifest.json` when a study is frozen.
 
 ## Build
 

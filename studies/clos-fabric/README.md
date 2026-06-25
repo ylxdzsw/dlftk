@@ -1,6 +1,6 @@
 # Study: CLOS fabric and broken-link failover
 
-**dlftk pin:** `v0.1.0` (see `study.toml`)
+**dlftk pin:** `v0.1.0` (see `lakefile.toml` `rev` when frozen; `path = "../.."` during monorepo dev)
 
 ## Question
 
