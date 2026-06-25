@@ -1,0 +1,11 @@
+name = "study-ub-vl-separation"
+version = "0.1.0"
+defaultTargets = ["StudyUbVlSeparation"]
+
+[[require]]
+name = "dlftk"
+path = "../.."
+
+[[lean_lib]]
+name = "StudyUbVlSeparation"
+roots = ["StudyUbVlSeparation", "TwoHostStore"]

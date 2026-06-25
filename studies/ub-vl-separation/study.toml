@@ -1,0 +1,21 @@
+id = "ub-vl-separation"
+title = "UB shared vs separate virtual-lane deadlock"
+dlftk_version = "0.1.0"
+dlftk_rev = "v0.1.0"
+
+[models]
+ub = true
+switch = false
+topology = []
+
+[features]
+virtual_lanes = true
+message_dependency = true
+
+[[claims]]
+name = "shared_vl_deadlocks"
+file = "TwoHostStore.lean"
+
+[[claims]]
+name = "separate_vl_deadlock_free"
+file = "TwoHostStore.lean"

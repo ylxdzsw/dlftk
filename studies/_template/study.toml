@@ -1,0 +1,15 @@
+id = "my-study"
+title = "Replace with study title"
+dlftk_version = "0.1.0"
+dlftk_rev = "v0.1.0"
+
+[models]
+ub = false
+switch = []
+topology = []
+
+[features]
+
+[[claims]]
+name = "example_claim"
+file = "Claims.lean"
