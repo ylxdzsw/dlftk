@@ -71,6 +71,7 @@ DLFTK/
       OneLayerClos.lean     -- one-layer CLOS: full host–plane mesh
     Scenario/
       OneLayerClos.lean     -- cross-traffic case study on 2 planes
+      BrokenLink.lean       -- link-fault / failover vs stuck-traffic study
 ```
 
 ## Switch flow-control libraries
@@ -100,6 +101,11 @@ host connects to every plane; plane `p` is a `CreditConservative` switch with
 The first scenario (`DLFTK/Switch/Scenario/OneLayerClos.lean`) places two hosts
 on a 2-plane CLOS with cross traffic on plane 0 and machine-checks
 deadlock-freedom under tight and relaxed VOQ sizing.
+
+Link faults are modeled via a per `(host, plane)` `linkUp` mask. The broken-link
+study (`DLFTK/Switch/Scenario/BrokenLink.lean`) shows that failover to
+remaining planes works when routing avoids the failed plane, but **deadlocks** if
+packets remain in dead-plane egress queues or switch VOQs.
 
 ## Build
 
