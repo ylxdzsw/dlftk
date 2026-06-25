@@ -1,0 +1,10 @@
+name = "study-my-study"
+version = "0.1.0"
+defaultTargets = ["StudyTemplate"]
+
+[[require]]
+name = "dlftk"
+path = "../.."
+
+[[lean_lib]]
+name = "StudyTemplate"

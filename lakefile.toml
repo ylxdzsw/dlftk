@@ -1,6 +1,16 @@
 name = "dlftk"
 version = "0.1.0"
-defaultTargets = ["DLFTK"]
+defaultTargets = ["DLFTK", "StudyUbVlSeparation", "StudyClosFabric"]
 
 [[lean_lib]]
 name = "DLFTK"
+
+[[lean_lib]]
+name = "StudyUbVlSeparation"
+srcDir = "studies/ub-vl-separation"
+roots = ["StudyUbVlSeparation", "TwoHostStore"]
+
+[[lean_lib]]
+name = "StudyClosFabric"
+srcDir = "studies/clos-fabric"
+roots = ["StudyClosFabric", "OneLayerClos", "BrokenLink"]
