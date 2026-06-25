@@ -25,6 +25,11 @@ Link flow control is wired as follows:
 * **Plane → host**: switch downstream credit on `(output = d, lane)`, sized to the
   host ingress capacity; returned when the host **delivers** the packet.
 
+A **broken host↔plane link** disables host transmission on that plane and
+switch→host delivery on that plane, but already-delivered host ingress can still
+be consumed (`hostDeliver`). This models a bidirectional link failure while
+keeping local delivery progress possible.
+
 Hosts offer load via environment `inject`; switches do not accept external inject
 in this topology (all traffic enters at hosts).
 -/
@@ -52,7 +57,32 @@ structure Params where
   hostIngressCap : Nat
   /-- Max packets a host may queue per plane before transmission. -/
   hostEgressCap : Nat
+  /-- Host↔plane link status, flattened as `(host, plane)` via `linkIdx`.
+  `true` = link up; `false` = broken (no host transmit or switch→host delivery). -/
+  linkUp : List Bool := []
 deriving DecidableEq, Repr, BEq, Hashable
+
+def linkIdx (P : Params) (h p : Nat) : Nat := h * P.nPlane + p
+
+def allLinksUp (P : Params) : List Bool :=
+  List.replicate (P.nHost * P.nPlane) true
+
+def linkUpAt (P : Params) (h p : Nat) : Bool :=
+  (P.linkUp[linkIdx P h p]?).getD true
+
+def withLinkUp (P : Params) (linkUp : List Bool) : Params :=
+  { P with linkUp := linkUp }
+
+def normalizedLinkUp (P : Params) : List Bool :=
+  if P.linkUp.isEmpty then allLinksUp P else P.linkUp
+
+/-- Mark the `(host, plane)` bidirectional link as broken. -/
+def withBrokenLink (P : Params) (h p : Nat) : Params :=
+  withLinkUp P (normalizedLinkUp P |>.set (linkIdx P h p) false)
+
+/-- Mark every link incident to a plane as broken. -/
+def withBrokenPlane (P : Params) (plane : Nat) : Params :=
+  (List.range P.nHost).foldl (fun P' h => withBrokenLink P' h plane) P
 
 def switchParams (P : Params) : CreditConservative.Params :=
   { nIn := P.nHost, nOut := P.nHost, nLane := P.nLane,
@@ -136,6 +166,30 @@ def popIngress (hs : HostSide) (plane : PlaneId) : Option (HostIngressPkt × Hos
       let ingress := hs.ingress ++ List.replicate (plane + 1 - hs.ingress.length) []
       some (x, { hs with ingress := ingress.set plane xs })
 
+/-- Queue one egress packet at host `h` for plane `plane`. -/
+def withHostEgress (P : Params) (s : St) (h plane dest lane : Nat) : St :=
+  setHost P s h (pushEgress (hostAt P s h) plane { dest := dest, lane := lane })
+
+/-- Queue one ingress packet at host `h` from plane `plane`, consuming downstream
+credit on that plane (consistent with a completed switch→host transfer). -/
+def withHostIngress (P : Params) (s : St) (h plane src lane : Nat) : St :=
+  let hs' := pushIngress (hostAt P s h) plane { src := src, lane := lane }
+  let s' := setHost P s h hs'
+  let sw := planeAt P s' plane
+  let di := CreditConservative.downIdx (switchParams P) h lane
+  let sw' := { sw with downCredit := decNat sw.downCredit di }
+  setPlane P s' plane sw'
+
+/-- Place one packet inside plane `plane`'s VOQ (upstream credit already consumed). -/
+def withSwitchVOQ (P : Params) (s : St) (plane input out lane : Nat) : St :=
+  let sw := planeAt P s plane
+  let routed : RoutedPkt := { input := input, out := out, lane := lane }
+  let ui := CreditConservative.upIdx (switchParams P) input lane
+  let sw' := { sw with
+    voq := sw.voq ++ [routed],
+    upCredit := decNat sw.upCredit ui }
+  setPlane P s plane sw'
+
 namespace Step
 
 variable (P : Params)
@@ -144,7 +198,7 @@ def sp : CreditConservative.Params := switchParams P
 
 /-- Host transmits the head of its plane-`plane` egress queue into switch `plane`. -/
 def hostTransmit (h plane : Nat) (s : St) : List St :=
-  if h < P.nHost && plane < P.nPlane then
+  if h < P.nHost && plane < P.nPlane && linkUpAt P h plane then
     let hs := hostAt P s h
     match popEgress hs plane with
     | none => []
@@ -179,7 +233,8 @@ def hostDeliver (h plane : Nat) (s : St) : List St :=
 
 /-- Switch transmits from VOQ toward a host; packet lands in host ingress. -/
 def switchTransmit (plane input out lane : Nat) (s : St) : List St :=
-  if plane < P.nPlane && input < P.nHost && out < P.nHost && lane < P.nLane then
+  if plane < P.nPlane && input < P.nHost && out < P.nHost && lane < P.nLane &&
+      linkUpAt P out plane then
     let sw := planeAt P s plane
     let di := CreditConservative.downIdx (sp P) out lane
     match headVOQ input out lane sw.voq with
@@ -214,7 +269,8 @@ def progress (s : St) : List St :=
 
 /-- Offer load at a host: queue a packet on a chosen plane toward `dest`. -/
 def hostInject (h plane dest lane : Nat) (s : St) : List St :=
-  if h < P.nHost && plane < P.nPlane && dest < P.nHost && lane < P.nLane then
+  if h < P.nHost && plane < P.nPlane && dest < P.nHost && lane < P.nLane &&
+      linkUpAt P h plane then
     let hs := hostAt P s h
     if egressLen hs plane < P.hostEgressCap then
       let pkt : HostPkt := { dest := dest, lane := lane }
@@ -238,14 +294,28 @@ def system (P : Params) : DLFTK.System St where
   progress := Step.progress P
   env := Step.env P
 
+def systemFrom (P : Params) (init : List St) : DLFTK.System St where
+  init := init
+  progress := Step.progress P
+  env := Step.env P
+
 /-- Offer cross traffic on plane 0: H0→H1 and H1→H0 (lane 0). -/
 def crossTrafficEnv (P : Params) (s : St) : List St :=
   Step.hostInject P 0 0 1 0 s ++ Step.hostInject P 1 0 0 0 s
+
+/-- Cross traffic on plane `p` (only if that plane's host links are up). -/
+def crossTrafficOnPlaneEnv (p : Nat) (P : Params) (s : St) : List St :=
+  Step.hostInject P 0 p 1 0 s ++ Step.hostInject P 1 p 0 0 s
 
 def crossTrafficSys (P : Params) : DLFTK.System St where
   init := [initClosSt P]
   progress := Step.progress P
   env := crossTrafficEnv P
+
+def crossTrafficOnPlaneSys (p : Nat) (P : Params) : DLFTK.System St where
+  init := [initClosSt P]
+  progress := Step.progress P
+  env := crossTrafficOnPlaneEnv p P
 
 def hasWork (s : St) : Bool :=
   s.hosts.any (fun hs =>
