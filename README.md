@@ -1,89 +1,43 @@
-# dlftk — a Lean library for studying deadlock in scale-up fabrics
+# dlftk
 
-`dlftk` is a research framework for formalizing and studying **deadlock** in
-scale-up interconnects (e.g. Huawei UB, Google Falcon, CXL). Rather than the
-classic *routing* deadlock theory (Dally/Duato — channel dependency graphs), it
-targets the deadlock class that actually dominates simple-topology scale-up
-fabrics: **resource / flow-control / message-dependent deadlock**.
-
-## Architecture
-
-The repo splits into two layers:
-
-| Layer | Path | Role |
-|-------|------|------|
-| **Library** | `DLFTK/` | Versioned models, topologies, analysis tools |
-| **Studies** | `studies/<id>/` | Independent research threads with pinned dlftk deps |
-
-See **[AGENTS.md](AGENTS.md)** for repo layout, conventions, and where to put changes.
+Research framework for **deadlock in scale-up interconnects** (Huawei UB,
+Google Falcon, CXL). Classic routing-cycle theory (Dally/Duato) misses the
+failure mode that dominates simple scale-up topologies: **resource,
+flow-control, and message-dependent deadlock**.
 
 ## Approach
 
-Everything is an **executable transition system** (`DLFTK.System`). Deadlock is
-defined *operationally*:
+Each fabric design is an **executable transition system**: states, progress steps
+(fabric doing work), and environment steps (offered load, faults). Deadlock is
+defined operationally:
 
-> a **reachable** state that still has outstanding **work** but from which
-> **no progress step** is possible.
+> a **reachable** state with outstanding **work**, but **no progress step** is
+> possible.
 
-For finite instances the reachable set is computed by a `HashSet`-based BFS
-(`DLFTK.System.explore`) that reports whether it **saturated** (explored the
-*exact* reachable set). Claims are then discharged by `native_decide`.
+For small, finite parameterizations we explore the reachable set by BFS and
+check whether the search **saturated** (worklist emptied — the exact reachable
+set, not a fuel-truncated slice). Safety claims are then discharged by
+computation (`native_decide`) over that set — no hand proof for the
+model-checking layer.
 
-## Library layout (`DLFTK/`)
+Studies compose reusable **models** (UB link, switch backpressure, CLOS
+topology, …) and discharge concrete claims about a specific design choice or
+failure scenario. Full research notes — failed attempts, rejected ideas,
+parameter searches — live in each study's `report.md`.
 
-```
-DLFTK/
-  Core.lean        -- generic transition system + BFS reachability
-  Analysis.lean    -- operational deadlock predicates + search
-  UB/              -- two-node UB protocol model
-  Switch/          -- switch backpressure models + CLOS topology
-```
+For developing the library or starting a new study, see [AGENTS.md](AGENTS.md).
 
-Studies import only what they need, e.g.:
+## Research
 
-```lean
-import DLFTK.Analysis
-import DLFTK.UB.Transitions
-import DLFTK.Switch.Topology.OneLayerClos
-```
+### [UB virtual-lane separation](studies/ub-vl-separation/)
 
-## Studies (`studies/`)
+Do store requests and responses deadlock when they share one virtual lane on a
+two-node UB link? **Shared VL deadlocks** (1639 states); **separate VL
+(req→0, resp→1) is deadlock-free** (18976 states). Establishes the
+message-dependent req→resp cycle as the core UB failure mode.
 
-| Study | Question | dlftk pin |
-|-------|----------|-----------|
-| [ub-vl-separation](studies/ub-vl-separation/) | shared vs separate VL deadlock on UB | v0.1.0 |
-| [clos-fabric](studies/clos-fabric/) | CLOS cross traffic + broken-link failover | v0.1.0 |
+### [CLOS fabric and broken-link failover](studies/clos-fabric/)
 
-Each study has a short `README.md` (summary) and `report.md` (full research
-journal). Claims live in `.lean` files; pin dlftk via `lakefile.toml`.
-
-## Build
-
-Core library only:
-
-```
-lake build DLFTK
-```
-
-Core + all studies:
-
-```
-lake build
-```
-
-Single study (standalone):
-
-```
-cd studies/clos-fabric && lake build
-```
-
-Requires the Lean toolchain pinned in `lean-toolchain`.
-
-## Roadmap (core)
-
-- Abstract **wait-for-graph** master theorem (Mathlib)
-- In-band ACK/credit-return path on UB
-- Posted writes and longer message-dependency chains
-- Additional fabrics: Falcon, CXL.mem
-
-Each item lands in `DLFTK/` first; a study folder adds the concrete claims.
+One-layer CLOS with parallel planes under conservative credit flow control.
+Cross traffic is deadlock-free; after a plane fails, **failover to surviving
+planes works** unless packets remain stuck in dead-plane egress or switch VOQs.
