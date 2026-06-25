@@ -67,6 +67,10 @@ DLFTK/
     CreditConservative.lean -- routed ingress VOQ holds upstream credit
     CreditSplit.lean        -- ingress credit is freed on route-to-VOQ
     PFC.lean                -- threshold pause/resume per priority
+    Topology/
+      OneLayerClos.lean     -- one-layer CLOS: full host–plane mesh
+    Scenario/
+      OneLayerClos.lean     -- cross-traffic case study on 2 planes
 ```
 
 ## Switch flow-control libraries
@@ -86,6 +90,16 @@ DLFTK/
 
 Each library exports its own `Params`, `St`, `system`, and `hasWork`, so a study
 can choose the model by importing the corresponding module.
+
+## One-layer CLOS topology (`DLFTK.Switch.Topology.OneLayerClos`)
+
+Models a single switching stage with **P parallel planes** (switches). Every
+host connects to every plane; plane `p` is a `CreditConservative` switch with
+`nIn = nOut = nHost`. Packets traverse host egress → plane VOQ → host ingress.
+
+The first scenario (`DLFTK/Switch/Scenario/OneLayerClos.lean`) places two hosts
+on a 2-plane CLOS with cross traffic on plane 0 and machine-checks
+deadlock-freedom under tight and relaxed VOQ sizing.
 
 ## Build
 
