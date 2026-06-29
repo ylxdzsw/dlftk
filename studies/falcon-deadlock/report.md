@@ -1,6 +1,6 @@
 # Research journal: Falcon deadlock avoidance
 
-**dlftk pin:** v0.2.0 · **Claims:** `TwoPeerLoadStore.lean`
+**dlftk pin:** v0.2.1 · **Claims:** `TwoPeerLoadStore.lean`
 
 ## Question
 

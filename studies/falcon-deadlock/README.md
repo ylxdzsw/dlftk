@@ -25,7 +25,8 @@ pull (load) transactions, RSN ordering, and resource designs:
 | `sharedTxRx` | cross push/pull | **deadlock** |
 | `sharedReqData` | pull-only | **deadlock** |
 
-See `PullAckStudy.lean` for ACK ablation and `ProactiveRxStudy.lean` for
+See `PullAckStudy.lean` for ACK ablation on pull-only traffic (early request
+ACK, data ACK, and no-ACK variants). See `ProactiveRxStudy.lean` for
 proactive pull-response Rx (OCP §8.2.2 Row B / SIGCOMM §4.5).
 
 **Code:** `TwoPeerLoadStore.lean` · **Journal:** [report.md](report.md)
