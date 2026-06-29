@@ -8,4 +8,4 @@ path = "../.."
 
 [[lean_lib]]
 name = "StudyFalconDeadlock"
-roots = ["StudyFalconDeadlock", "TwoPeerLoadStore"]
+roots = ["StudyFalconDeadlock", "TwoPeerLoadStore", "PullAckStudy"]

@@ -48,6 +48,36 @@ Each peer has a pull request occupying the unified PDL window while the
 matching pull data response waits in `dataLane`; neither can release the window
 until the peer completes the round trip.
 
+## Pull ACK ablation (`PullAckStudy.lean`)
+
+**Question:** Is pull's early request ACK necessary? What if pull were one
+request and one response with no ACK-for-request and no ACK-for-response?
+
+| variant | workload | result |
+|---------|----------|--------|
+| `crCompliant` + both ACKs | pull-only | ≥1.3M explored, no deadlock found |
+| `crCompliant`, no `ackReq` | pull-only | **deadlock** (saturated) — `reqFlight` never drains |
+| `crCompliant`, no `ackData` | pull-only | **deadlock** (saturated) |
+| `crCompliant`, no ACKs | pull-only | **deadlock** (saturated) |
+| `sharedReqData` (late ACK) | pull-only | **deadlock** (see `TwoPeerLoadStore`) |
+| `sharedReqData`, no ACKs | pull-only | **deadlock** (saturated) |
+
+**Interpretation**
+
+* **Early ACK (`ackReq`)** frees the request PDL slot after the peer consumes
+  `pullReq` (`targetPull`) but before `pullData` returns. With **merged**
+  request/data windows (`sharedReqData`), omitting it deadlocks even on
+  pull-only traffic: each peer's `pullReq` blocks the peer's `pullData`.
+* With **separate** request/data windows (`crCompliant`), early ACK is not
+  required to *complete* a single pull round-trip (the data window is
+  independent), but **some** ACK mechanism is still needed to drain PDL flight
+  tracking — without `ackReq`, completed pulls leave `reqFlight` occupied and
+  the system deadlocks before reaching idle.
+* A literal one-request/one-response design with **no** ACK-for-request and
+  **no** ACK-for-response cannot reuse Falcon's bounded PDL windows as modeled
+  here; slots must be released implicitly on delivery (different semantics) or
+  the connection stalls.
+
 ## Open follow-ups
 
 * Discharge a `sharedScheduler` deadlock claim (model supports the design knob;

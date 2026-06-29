@@ -24,4 +24,7 @@ pull (load) transactions, RSN ordering, and four resource designs:
 | `sharedTxRx` | cross push/pull | **deadlock** |
 | `sharedReqData` | pull-only | **deadlock** |
 
+See `PullAckStudy.lean` for ACK ablation on pull-only traffic (early request
+ACK, data ACK, and no-ACK variants).
+
 **Code:** `TwoPeerLoadStore.lean` · **Journal:** [report.md](report.md)
