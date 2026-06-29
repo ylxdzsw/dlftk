@@ -1,6 +1,6 @@
 # Research journal: UB virtual-lane separation
 
-**dlftk pin:** v0.1.0 · **Claims:** `TwoHostStore.lean`
+**dlftk pin:** v0.1.0 · **Claims:** `TwoHostStore.lean`, `WFGAnalysis.lean`
 
 ## Question
 
@@ -81,4 +81,22 @@ fuel budget.
 
 - Same hypothesis on longer dependency chains (posted writes, multi-hop)
 - In-band ACK model to separate credit-only deadlock from message-dependent
-- WFG extraction to replace brute-force BFS (core roadmap)
+- Mathlib-backed WFG theory (generalise beyond 2-node peer graphs)
+- Analytic deadlock-freedom proof for separate VL (replace enumeration)
+
+## Mathematical layer (`WFGAnalysis.lean`)
+
+Alongside full BFS enumeration in `TwoHostStore.lean`, we extract **peer
+wait-for graphs** from operational states (`DLFTK.UB.Dependency`):
+
+| predicate | shared VL | separate VL |
+|-----------|-----------|-------------|
+| `reachableDeadlockMutualWait` | **true** (some deadlock has A⇄B wait) | n/a |
+| `reachableDeadlockWFG` | **true** (deadlock + WFG cycle) | **false** |
+| `reachablePartitionInv` | n/a | **true** (process blocked ↔ resp egress full) |
+
+The shared-VL stall is the classic symmetric pattern: each node holds a request
+at ingress, cannot produce a response because the shared egress lane is occupied
+by a request stuck on zero credit / full peer ingress — mutual waiting in the
+WFG. Separate VL breaks the cycle because response production depends only on
+the response lane (`lanesPartitioned`).

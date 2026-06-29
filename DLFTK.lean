@@ -3,6 +3,8 @@ import DLFTK.Analysis
 import DLFTK.UB.Types
 import DLFTK.UB.Model
 import DLFTK.UB.Transitions
+import DLFTK.Graph
+import DLFTK.UB.Dependency
 import DLFTK.Switch.Types
 import DLFTK.Switch.CreditConservative
 import DLFTK.Switch.CreditSplit

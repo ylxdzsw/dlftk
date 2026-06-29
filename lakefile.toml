@@ -1,5 +1,5 @@
 name = "dlftk"
-version = "0.2.1"
+version = "0.2.2"
 defaultTargets = ["DLFTK", "StudyUbVlSeparation", "StudyClosFabric", "StudyFalconDeadlock"]
 
 [[lean_lib]]
@@ -8,7 +8,7 @@ name = "DLFTK"
 [[lean_lib]]
 name = "StudyUbVlSeparation"
 srcDir = "studies/ub-vl-separation"
-roots = ["StudyUbVlSeparation", "TwoHostStore"]
+roots = ["StudyUbVlSeparation", "TwoHostStore", "WFGAnalysis"]
 
 [[lean_lib]]
 name = "StudyClosFabric"
