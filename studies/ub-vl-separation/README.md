@@ -11,8 +11,8 @@ dedicates lanes per message class.
 ## Approach
 
 Two-node UB link, both hosts streaming non-posted stores. Compare `VLMap.shared`
-vs `VLMap.separate`. Bounded BFS over the reachable set; claims via
-`native_decide` with saturation witnesses.
+vs `VLMap.separate`. Claims use bounded BFS (`TwoHostStore.lean`) plus a
+wait-for-graph dependency layer (`WFGAnalysis.lean`).
 
 ## Key results
 
@@ -23,7 +23,7 @@ vs `VLMap.separate`. Bounded BFS over the reachable set; claims via
 
 Separating lanes breaks the req→resp dependency cycle.
 
-**Code:** `TwoHostStore.lean` · **Journal:** [report.md](report.md)
+**Code:** `TwoHostStore.lean`, `WFGAnalysis.lean` · **Journal:** [report.md](report.md)
 
 ```bash
 lake build StudyUbVlSeparation
