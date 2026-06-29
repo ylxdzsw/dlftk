@@ -16,6 +16,7 @@ one independence axis so the BFS search can exhibit the corresponding cycle:
 | `sharedTxRx` | CR #1 | outgoing push data holds the only Rx slot needed for peer's pull request |
 | `sharedReqData` | CR #2 | pull request and pull data compete for one PDL window |
 | `sharedScheduler` | CR #2 | initiator push data blocks target pull data on the same queue |
+| `noProactivePullRx` | §8.2.2 Row B | `pullData` cannot land — initiator never reserved Rx at inject |
 -/
 import DLFTK.Falcon.Model
 
@@ -46,29 +47,59 @@ namespace PoolOps
 def dedicatedCap (P : Params) (sd : Side) (region : DedicatedPools → Nat) : Bool :=
   region sd.pools < P.poolCap
 
+def rxUlpReqCap (P : Params) (sd : Side) : Bool :=
+  sd.pools.rxUlpReq < P.rxUlpReqCap
+
 def sharedPoolCap (P : Params) (sd : Side) : Bool :=
   sd.sharedPool < P.sharedCap
 
-/-- Push / pull inject: ULP request Tx + proactive ULP request Rx. -/
-def canAllocUlpReq (P : Params) (sd : Side) : Bool :=
+/-- Push / pull inject: ULP request Tx + proactive ULP request Rx (§8.2.2 Rows A–B).
+
+For pull, both `txUlpReq` and `rxUlpReq` are required at inject so the initiator
+can land the incoming `pullData` before sending the `pullReq` (paper §4.5). -/
+def canAllocUlpReq (P : Params) (sd : Side) (kind : TxnKind) : Bool :=
   match P.design with
   | .crCompliant =>
-    dedicatedCap P sd (·.txUlpReq) ∧ dedicatedCap P sd (·.rxUlpReq)
+    dedicatedCap P sd (·.txUlpReq) ∧ rxUlpReqCap P sd
+  | .noProactivePullRx =>
+    match kind with
+    | .pull => dedicatedCap P sd (·.txUlpReq)
+    | .push => dedicatedCap P sd (·.txUlpReq) ∧ rxUlpReqCap P sd
   | .sharedTxRx => sharedPoolCap P sd
   | _ =>
-    dedicatedCap P sd (·.txUlpReq) ∧ dedicatedCap P sd (·.rxUlpReq)
+    dedicatedCap P sd (·.txUlpReq) ∧ rxUlpReqCap P sd
 
-def allocUlpReq (P : Params) (sd : Side) : Side :=
+def allocUlpReq (P : Params) (sd : Side) (kind : TxnKind) : Side :=
   match P.design with
   | .crCompliant =>
     { sd with pools := { sd.pools with
         txUlpReq := sd.pools.txUlpReq + 1,
         rxUlpReq := sd.pools.rxUlpReq + 1 } }
+  | .noProactivePullRx =>
+    match kind with
+    | .pull =>
+      { sd with pools := { sd.pools with txUlpReq := sd.pools.txUlpReq + 1 } }
+    | .push =>
+      { sd with pools := { sd.pools with
+          txUlpReq := sd.pools.txUlpReq + 1,
+          rxUlpReq := sd.pools.rxUlpReq + 1 } }
   | .sharedTxRx => { sd with sharedPool := sd.sharedPool + 1 }
   | _ =>
     { sd with pools := { sd.pools with
         txUlpReq := sd.pools.txUlpReq + 1,
         rxUlpReq := sd.pools.rxUlpReq + 1 } }
+
+/-- Late pull-response Rx: allocate `rxUlpReq` when `pullData` lands (§8.2.2 Row C). -/
+def canAllocPullDataRx (P : Params) (sd : Side) : Bool :=
+  match P.design with
+  | .noProactivePullRx => rxUlpReqCap P sd
+  | _ => true
+
+def allocPullDataRx (P : Params) (sd : Side) : Side :=
+  match P.design with
+  | .noProactivePullRx =>
+    { sd with pools := { sd.pools with rxUlpReq := sd.pools.rxUlpReq + 1 } }
+  | _ => sd
 
 def canAllocUlpData (P : Params) (sd : Side) : Bool :=
   match P.design with
@@ -127,11 +158,11 @@ namespace Step
 /-- **inject** (env): ULP offers a push (store) or pull (load) transaction. -/
 def inject (P : Params) (n : Peer) (kind : TxnKind) (s : St) : List St :=
   let sd := s.side n
-  if canInject P sd ∧ PoolOps.canAllocUlpReq P sd then
+  if canInject P sd ∧ PoolOps.canAllocUlpReq P sd kind then
     let txn : Txn := { kind, rsn := sd.nextRsn }
     let sd' := PoolOps.allocUlpReq P { sd with
       pending := sd.pending ++ [txn],
-      nextRsn := sd.nextRsn + 1 }
+      nextRsn := sd.nextRsn + 1 } kind
     [s.setSide n sd']
   else []
 
@@ -264,16 +295,40 @@ def transmitData (P : Params) (n : Peer) (s : St) : List St :=
       if P.design == .sharedReqData then
         if sd'.unifiedFlight.length < P.dataWindow then
           let peer := s.side n.peer
-          let sd'' := { sd' with unifiedFlight := sd'.unifiedFlight ++ [pkt] }
-          let peer' := { peer with completions := peer.completions ++ [pkt] }
-          [(s.setSide n sd'').setSide n.peer peer']
+          if ¬ PoolOps.canAllocPullDataRx P peer then []
+          else
+            let peer' := { peer with inFlightPullData := peer.inFlightPullData ++ [pkt] }
+            let sd'' := { sd' with unifiedFlight := sd'.unifiedFlight ++ [pkt] }
+            [(s.setSide n sd'').setSide n.peer peer']
         else []
       else if sd'.dataFlight.length < P.dataWindow then
         let peer := s.side n.peer
-        let sd'' := { sd' with dataFlight := sd'.dataFlight ++ [pkt] }
-        let peer' := { peer with completions := peer.completions ++ [pkt] }
-        [(s.setSide n sd'').setSide n.peer peer']
+        if ¬ PoolOps.canAllocPullDataRx P peer then []
+        else
+          let peer' := { peer with inFlightPullData := peer.inFlightPullData ++ [pkt] }
+          let sd'' := { sd' with dataFlight := sd'.dataFlight ++ [pkt] }
+          [(s.setSide n sd'').setSide n.peer peer']
       else []
+
+/-- **landPullData** (progress): initiator admits network-delivered pull data to
+completions, nondeterministically picking from `inFlightPullData` (models PDL
+reordering). Proactive designs already hold `rxUlpReq`; `noProactivePullRx`
+allocates on landing (§8.2.2 Row C / B2). -/
+def landPullData (P : Params) (n : Peer) (s : St) : List St :=
+  let sd := s.side n
+  sd.inFlightPullData.flatMap fun pkt =>
+    let rest := sd.inFlightPullData.filter (fun q => q != pkt)
+    if P.design == .noProactivePullRx then
+      if ¬ PoolOps.canAllocPullDataRx P sd then []
+      else
+        let sd' := PoolOps.allocPullDataRx P { sd with
+          inFlightPullData := rest,
+          completions := sd.completions ++ [pkt] }
+        [s.setSide n sd']
+    else
+      [s.setSide n { sd with
+        inFlightPullData := rest,
+        completions := sd.completions ++ [pkt] }]
 
 /-- **complete** (progress): deliver initiator completion to ULP in RSN order. -/
 def complete (P : Params) (n : Peer) (s : St) : List St :=
@@ -334,6 +389,7 @@ def perPeer (P : Params) (n : Peer) (s : St) : List St :=
   ++ targetPull P n s
   ++ deliverPush P n s
   ++ transmitData P n s
+  ++ landPullData P n s
   ++ complete P n s
   ++ ackReq P n s
   ++ ackData P n s
@@ -360,7 +416,7 @@ def hasWork (s : St) : Bool :=
     ¬ (sd.pending.isEmpty ∧ sd.reqLane.isEmpty ∧ sd.dataLane.isEmpty
        ∧ sd.unifiedLane.isEmpty ∧ sd.reqFlight.isEmpty ∧ sd.dataFlight.isEmpty
        ∧ sd.unifiedFlight.isEmpty ∧ sd.netReq.isEmpty ∧ sd.pushWait.isEmpty
-       ∧ sd.completions.isEmpty)
+       ∧ sd.completions.isEmpty ∧ sd.inFlightPullData.isEmpty)
   busy s.a || busy s.b
 
 end DLFTK.Falcon

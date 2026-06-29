@@ -50,17 +50,24 @@ deriving DecidableEq, Repr, BEq, Hashable
 
 /-- Falcon constrained-resource carving policy.
 
-`crCompliant` follows CR Rules #1–#2: separate Tx/Rx-style pools, separate
-request vs data PDL windows, and separate initiator (`pullReq`/`pushData`) vs
-target (`pullData`) scheduler lanes.
+`crCompliant` follows CR Rules #1–#2 (OCP §8.2.1.2) and proactive ULP resource
+assignment (§8.2.2 table Row B): separate Tx/Rx-style pools, separate request
+vs data PDL windows, separate initiator (`pullReq`/`pushData`) vs target
+(`pullData`) scheduler lanes, and **pull inject allocates ULP Req Tx + ULP Req
+Rx** so the initiator can land the incoming `pullData` before transmitting the
+`pullReq` (SIGCOMM §4.5 resource lifecycle).
 
 The `shared*` variants each remove one independence axis to expose the
-corresponding deadlock class. -/
+corresponding deadlock class.
+
+`noProactivePullRx` violates §8.2.2 Row B Col2: pull inject allocates only
+`txUlpReq`; `rxUlpReq` is deferred until `pullData` arrives at the initiator. -/
 inductive ResourceDesign
   | crCompliant
   | sharedTxRx
   | sharedReqData
   | sharedScheduler
+  | noProactivePullRx
 deriving DecidableEq, Repr, BEq, Hashable
 
 /-- Initiator scheduler lane: pull requests and push data (spec §8.3). -/

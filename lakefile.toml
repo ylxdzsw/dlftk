@@ -1,5 +1,5 @@
 name = "dlftk"
-version = "0.2.0"
+version = "0.2.1"
 defaultTargets = ["DLFTK", "StudyUbVlSeparation", "StudyClosFabric", "StudyFalconDeadlock"]
 
 [[lean_lib]]
@@ -18,4 +18,4 @@ roots = ["StudyClosFabric", "OneLayerClos", "BrokenLink"]
 [[lean_lib]]
 name = "StudyFalconDeadlock"
 srcDir = "studies/falcon-deadlock"
-roots = ["StudyFalconDeadlock", "TwoPeerLoadStore", "PullAckStudy"]
+roots = ["StudyFalconDeadlock", "TwoPeerLoadStore", "PullAckStudy", "ProactiveRxStudy"]
