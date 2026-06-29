@@ -41,3 +41,10 @@ message-dependent req→resp cycle as the core UB failure mode.
 One-layer CLOS with parallel planes under conservative credit flow control.
 Cross traffic is deadlock-free; after a plane fails, **failover to surviving
 planes works** unless packets remain stuck in dead-plane egress or switch VOQs.
+
+### [Falcon deadlock avoidance](studies/falcon-deadlock/)
+
+Two-peer Falcon connection with push/pull transactions and CR resource carving.
+**CR-compliant design is deadlock-free** under cross load/store traffic; violating
+CR Rule #1 (`sharedTxRx`) or CR Rule #2 (`sharedReqData` merged PDL window)
+reintroduces message-dependent deadlock.
