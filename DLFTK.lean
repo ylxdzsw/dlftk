@@ -8,3 +8,6 @@ import DLFTK.Switch.CreditConservative
 import DLFTK.Switch.CreditSplit
 import DLFTK.Switch.PFC
 import DLFTK.Switch.Topology.OneLayerClos
+import DLFTK.Falcon.Types
+import DLFTK.Falcon.Model
+import DLFTK.Falcon.Transitions
