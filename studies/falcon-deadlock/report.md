@@ -1,6 +1,6 @@
 # Research journal: Falcon deadlock avoidance
 
-**dlftk pin:** v0.2.0 · **Claims:** `TwoPeerLoadStore.lean`
+**dlftk pin:** v0.2.1 · **Claims:** `TwoPeerLoadStore.lean`
 
 ## Question
 
@@ -48,6 +48,19 @@ Each peer has a pull request occupying the unified PDL window while the
 matching pull data response waits in `dataLane`; neither can release the window
 until the peer completes the round trip.
 
+## Model completeness (OCP v1.1 + SIGCOMM)
+
+See `DLFTK/Falcon/Model.lean` for the full spec-to-model table. Summary:
+
+**Modeled:** CR Rules #1–#2, proactive ULP Req Rx at pull inject (Row B),
+separate req/data PDL windows and scheduler lanes, UR ordering on push/pull HoL,
+side-band PDL ACKs, dedicated pool regions (`txUlpReq`, `rxUlpReq`, `txUlpData`,
+`rxNetReq`).
+
+**Not modeled (planned extensions):** byte-granular buffer pools, green/red HoL
+zones (§8.2.4), RNR/CIE/Resync, Xon/Xoff ULP backpressure, target ULP ack before
+pull data, multi-connection scheduling, PDL congestion control.
+
 ## Pull ACK ablation (`PullAckStudy.lean`)
 
 **Question:** Is pull's early request ACK necessary? What if pull were one
@@ -77,6 +90,20 @@ request and one response with no ACK-for-request and no ACK-for-response?
   **no** ACK-for-response cannot reuse Falcon's bounded PDL windows as modeled
   here; slots must be released implicitly on delivery (different semantics) or
   the connection stalls.
+
+## Proactive pull Rx (`ProactiveRxStudy.lean`)
+
+OCP §8.2.2 Row B and SIGCOMM §4.5: initiator reserves Rx for `pullData` at ULP
+inject, before sending `pullReq`.
+
+| design | workload | result |
+|--------|----------|--------|
+| `crCompliant` | 2 pull offers, `rxUlpReqCap=1` | **deadlock-free** — 2nd pull rejected at inject |
+| `noProactivePullRx` | same | **deadlock** (saturated) — both accepted, OOO blocks HoL |
+
+Witness: without proactive reservation, two pulls are admitted on Tx alone; when
+RSN-1 `pullData` lands before RSN-0, the single `rxUlpReq` slot fills and the
+HoL response cannot be admitted to completions.
 
 ## Open follow-ups
 

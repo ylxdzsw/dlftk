@@ -19,6 +19,7 @@ open DLFTK DLFTK.Falcon
 
 def mkParams (design : ResourceDesign) (txnWindow : Nat := 1) : Params := {
   poolCap := 1,
+  rxUlpReqCap := 1,
   sharedCap := 2,
   reqWindow := 1,
   dataWindow := 1,
@@ -38,6 +39,7 @@ def perPeerNoAckReq (P : Params) (n : Peer) (s : St) : List St :=
   ++ Step.targetPull P n s
   ++ Step.deliverPush P n s
   ++ Step.transmitData P n s
+  ++ Step.landPullData P n s
   ++ Step.complete P n s
   ++ Step.ackData P n s
 
@@ -48,6 +50,7 @@ def perPeerNoAckData (P : Params) (n : Peer) (s : St) : List St :=
   ++ Step.targetPull P n s
   ++ Step.deliverPush P n s
   ++ Step.transmitData P n s
+  ++ Step.landPullData P n s
   ++ Step.complete P n s
   ++ Step.ackReq P n s
 
@@ -58,6 +61,7 @@ def perPeerNoAck (P : Params) (n : Peer) (s : St) : List St :=
   ++ Step.targetPull P n s
   ++ Step.deliverPush P n s
   ++ Step.transmitData P n s
+  ++ Step.landPullData P n s
   ++ Step.complete P n s
 
 def progressNoAckReq (P : Params) (s : St) : List St :=

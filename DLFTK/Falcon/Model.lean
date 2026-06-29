@@ -2,15 +2,33 @@
 # DLFTK.Falcon.Model — Two-peer Falcon connection with resource pools
 
 We model **one bidirectional Falcon connection** between peers `A` and `B`, with
-the deadlock-relevant transaction-layer structure from Falcon §8.2–8.4:
+the deadlock-relevant transaction-layer structure from Falcon §8.2–8.4 (OCP v1.1)
+and §4.5 / Fig. 6 (SIGCOMM).
 
-1. **Push and pull transactions** with RSN assignment and (optional) ordered
-   delivery at the target and ordered completions at the initiator.
-2. **Resource pools** carved into ULP-request, ULP-data, and network-request
-   regions — or collapsed to a single shared pool (`sharedTxRx`).
-3. **Separate request vs data PDL windows** — or merged (`sharedReqData`).
-4. **Separate initiator vs target scheduler queues** — or merged
-   (`sharedScheduler`).
+## Spec correspondence (what we model)
+
+| Mechanism | OCP / paper | Model |
+|-----------|-------------|-------|
+| CR Rule #1: independent Tx vs Rx allocation | §8.2.1.2 rule 1 | `txUlpReq`/`txUlpData` vs `rxUlpReq`/`rxNetReq` pools |
+| CR Rule #2: independent initiator vs target pkts | §8.2.1.2 rule 2, §8.3 | `reqLane` vs `dataLane`; separate PDL windows |
+| Proactive pull Rx at ULP inject | §8.2.2 Row B Col2; paper §4.5 | `inject` `.pull` → `txUlpReq` + `rxUlpReq` |
+| Proactive push completion Rx at inject | §8.2.2 Row A | `inject` `.push` → `txUlpReq` + `rxUlpReq` |
+| Pull data uses pre-allocated initiator Rx | §8.4.3.2 | `rxUlpReq` held from inject through `complete` |
+| Target net Rx on receive | §8.5.3.1 | `allocNetReq` at `transmitReq` on peer |
+| Target ULP data Tx on pull response | §8.2.2 Row C Col3 | `allocUlpData` at `targetPull` |
+| UR Rule: ordered HoL at target | §8.2.1.1 | `isHol` on `netReq` / `pushWait` |
+| UR Rule: push ACK blocked on HoL txn | §8.2.1.1 | `deliverPush` + `ordered` + `netReq` |
+| Separate req/data PSN spaces | §A.1 (paper) | `reqWindow` / `dataWindow`; `ackReq` / `ackData` |
+| PullReqAckd / early request ACK | §8.4.3.1 | `ackReq` after `targetPull` |
+
+## Intentional abstractions / not modeled
+
+* Four physical pools (Tx/Rx packet + buffer) collapsed to **packet slots**
+  per region; byte-granular buffer credits (`ceiling(L/N)`) omitted.
+* PDL congestion control (`ncwnd`/`fcwnd`), RNR/CIE/Resync, green/red HoL zones
+  (§8.2.4), Xon/Xoff backpressure, multi-connection scheduling.
+* Target ULP ack before pull data (`PullReqUlpAckd`); target always ready.
+* ACKs modeled as side-band `ackReq`/`ackData` steps (like UB `linkAck`).
 
 ## Key modeling assumptions (documented on purpose)
 
@@ -32,6 +50,8 @@ namespace DLFTK.Falcon
 structure Params where
   /-- Per-region capacity when `design = crCompliant`. -/
   poolCap : Nat
+  /-- Capacity of the ULP Req Rx region (proactive pull-response / push-completion slots). -/
+  rxUlpReqCap : Nat
   /-- Shared-pool capacity for `sharedTxRx`. -/
   sharedCap : Nat
   /-- Request PDL window (pull requests). -/
@@ -76,6 +96,8 @@ structure Side where
   pushWait : List WirePkt := []
   /-- Completions waiting in-order delivery to initiator ULP. -/
   completions : List WirePkt := []
+  /-- Pull data delivered from network, not yet copied to completions (OOO). -/
+  inFlightPullData : List WirePkt := []
   /-- Base RSN for ordered completion delivery. -/
   brsn : Nat := 0
   /-- Dedicated pool occupancy. -/
@@ -102,6 +124,7 @@ def Side.outstanding (sd : Side) : Nat :=
   sd.pending.length + sd.reqLane.length + sd.dataLane.length + sd.unifiedLane.length
     + sd.reqFlight.length + sd.dataFlight.length + sd.unifiedFlight.length
     + sd.netReq.length + sd.pushWait.length + sd.completions.length
+    + sd.inFlightPullData.length
 
 def canInject (P : Params) (sd : Side) : Bool :=
   sd.outstanding < P.txnWindow

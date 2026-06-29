@@ -15,6 +15,7 @@ open DLFTK DLFTK.Falcon
 
 def mkParams (design : ResourceDesign) (txnWindow : Nat := 2) : Params := {
   poolCap := 1,
+  rxUlpReqCap := 1,
   sharedCap := 2,
   reqWindow := 1,
   dataWindow := 1,
