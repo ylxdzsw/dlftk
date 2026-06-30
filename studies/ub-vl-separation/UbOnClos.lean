@@ -3,11 +3,9 @@
 
 Same hypothesis as `TwoHostStore.lean`, but hosts are on a one-layer CLOS
 (plane 0) instead of a direct two-node link.
-
-BFS diagnostics for this topology are heavier than the two-node link; add
-`#eval` claims in a follow-up once saturation bounds are known.
 -/
 import DLFTK.Compose.UbOnClos
+import DLFTK.Analysis
 
 namespace StudyUbVlSeparation.UbOnClos
 
@@ -24,5 +22,22 @@ def separateP : Params :=
 
 def sharedSys : DLFTK.System St := crossTrafficSys sharedP
 def separateSys : DLFTK.System St := crossTrafficSys separateP
+
+def fuel : Nat := 10000
+
+/-! ## Diagnostics -/
+
+#eval sharedSys.reachableCount fuel
+#eval separateSys.reachableCount fuel
+
+#eval sharedSys.reachableSaturated fuel
+#eval separateSys.reachableSaturated fuel
+
+#eval sharedSys.findDeadlock hasWork fuel
+#eval separateSys.findDeadlock hasWork fuel
+
+/-! ## Machine-checked claims -/
+
+example : separateSys.deadlockFree hasWork fuel = true := by native_decide
 
 end StudyUbVlSeparation.UbOnClos

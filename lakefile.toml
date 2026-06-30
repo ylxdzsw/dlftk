@@ -1,5 +1,5 @@
 name = "dlftk"
-version = "0.4.1"
+version = "0.4.2"
 defaultTargets = ["DLFTK", "StudyUbVlSeparation", "StudyClosFabric", "StudyFalconDeadlock"]
 
 [[lean_lib]]
