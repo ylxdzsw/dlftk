@@ -1,8 +1,11 @@
 /-
 # DLFTK.UB.Types — Basic types for the UB protocol model
 
-We model a **two-node, single-link** UB segment. The vocabulary is chosen to
-expose the mechanisms that matter for deadlock:
+UB is an **L4 message protocol** (req/resp store semantics) over **L2 virtual
+lanes**. The legacy two-host study uses topology `Topology.TwoNode`; see
+`Compose.UbOnClos` for CLOS fabric wiring.
+
+The vocabulary is chosen to expose the mechanisms that matter for deadlock:
 
 * **Virtual lanes (VL)** — independent buffer/credit pools multiplexed on one link.
 * **Message class** — `req` (store request) vs `resp` (completion/response).

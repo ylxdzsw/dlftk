@@ -70,8 +70,8 @@ def transmitVL (n : Node) (v : VL) (s : St) : List St :=
   match laneHead v self.egress with
   | none => []
   | some (pkt, rest) =>
-    if creditAt self.credit v > 0 ∧ self.replay.length < P.window
-        ∧ laneLen v peer.ingress < P.cap then
+    if creditAt self.credit v > 0 && self.replay.length < P.window
+        && laneLen v peer.ingress < P.cap then
       let self' := { self with
         egress := rest,
         credit := setCredit self.credit v (creditAt self.credit v - 1),
@@ -130,6 +130,27 @@ def linkAck (n : Node) (s : St) : List St :=
   | [] => []
   | _ :: rest => [s.setSide n { self with replay := rest }]
 
+/-- **retransmit** (progress): resend the oldest replayed packet on VL `v`. -/
+def retransmitVL (n : Node) (v : VL) (s : St) : List St :=
+  let self := s.side n
+  let peer := s.side n.peer
+  match self.replay with
+  | [] => []
+  | pkt :: _ =>
+    if pkt.vl == v && creditAt self.credit v > 0 && laneLen v peer.ingress < P.cap then
+      let self' := { self with
+        credit := setCredit self.credit v (creditAt self.credit v - 1) }
+      let peer' := { peer with ingress := peer.ingress ++ [pkt] }
+      [(s.setSide n self').setSide n.peer peer']
+    else []
+
+/-- **dropInflight** (env): L2 loss of the oldest unACKed packet. -/
+def dropInflight (n : Node) (s : St) : List St :=
+  let self := s.side n
+  match self.replay with
+  | [] => []
+  | _ :: rest => [s.setSide n { self with replay := rest }]
+
 /-- All progress successors of `s` for a parameter set `P`. -/
 def progress (s : St) : List St :=
   let nodes := [Node.A, Node.B]
@@ -138,12 +159,14 @@ def progress (s : St) : List St :=
     (vls.flatMap (fun v => transmitVL P n v s))
     ++ (vls.flatMap (fun v => processVL P n v s))
     ++ (vls.flatMap (fun v => consumeVL n v s))
+    ++ (vls.flatMap (fun v => retransmitVL P n v s))
     ++ linkAck n s
   nodes.flatMap perNode
 
-/-- All environment successors of `s` (offered load). -/
+/-- All environment successors of `s` (offered load + L2 loss). -/
 def env (s : St) : List St :=
   [Node.A, Node.B].flatMap (fun n => inject P n s)
+    ++ [Node.A, Node.B].flatMap (fun n => dropInflight n s)
 
 end Step
 
