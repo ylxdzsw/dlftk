@@ -48,3 +48,10 @@ Two-peer Falcon connection with push/pull transactions and CR resource carving.
 **CR-compliant design is deadlock-free** under cross load/store traffic; violating
 CR Rule #1 (`sharedTxRx`) or CR Rule #2 (`sharedReqData` merged PDL window)
 reintroduces message-dependent deadlock.
+
+### [RoCE PFC pause deadlock](studies/roce-pfc-deadlock/)
+
+Two-switch RoCE line with PFC threshold backpressure. **Cross traffic is
+deadlock-free** under tight buffers (6336 states); a **congested pause ring**
+witness (all input lanes full, pause asserted) deadlocks with a four-node WFG
+cycle when host completion drain is disabled.

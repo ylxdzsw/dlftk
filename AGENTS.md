@@ -145,3 +145,4 @@ Land in `DLFTK/` first; discharge claims in a new `studies/` folder:
 | `ub-vl-separation` | `StudyUbVlSeparation` | `DLFTK.UB.Transitions` |
 | `clos-fabric` | `StudyClosFabric` | `Switch.CreditConservative`, `Topology.OneLayerClos` |
 | `falcon-deadlock` | `StudyFalconDeadlock` | `Falcon.Transitions` |
+| `roce-pfc-deadlock` | `StudyRoCEPfcDeadlock` | `RoCE.Topology.TwoSwitchLine`, `RoCE.Dependency` |
