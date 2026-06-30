@@ -114,10 +114,10 @@ def h1Deliver (P : Params) (s : St) : List St :=
   (List.range P.nPrio).flatMap (fun prio =>
     hostDeliver s.h1 prio |>.map fun h1' => { s with h1 := h1' })
 
-/-- SW0 → H0 delivery. -/
+/-- SW0 → H0 delivery (packets arriving from SW1 on the inter-switch link). -/
 def deliverSw0ToH0 (P : Params) (prio : Nat) (s : St) : List St :=
   if prio < P.nPrio && ingressLen s.h0 prio < P.hostIngressCap then
-    match headVOQ sw0H0 sw0ToH0 prio s.sw0.q with
+    match headVOQ sw0FromSw1 sw0ToH0 prio s.sw0.q with
     | none => []
     | some (pkt, rest) =>
         let h0' := pushIngress s.h0 prio { src := pkt.input, prio := pkt.lane }
@@ -125,10 +125,10 @@ def deliverSw0ToH0 (P : Params) (prio : Nat) (s : St) : List St :=
         [{ s with h0 := h0', sw0 := sw0' }]
   else []
 
-/-- SW1 → H1 delivery. -/
+/-- SW1 → H1 delivery (packets arriving from SW0 on the inter-switch link). -/
 def deliverSw1ToH1 (P : Params) (prio : Nat) (s : St) : List St :=
   if prio < P.nPrio && ingressLen s.h1 prio < P.hostIngressCap then
-    match headVOQ sw1H1 sw1ToH1 prio s.sw1.q with
+    match headVOQ sw1FromSw0 sw1ToH1 prio s.sw1.q with
     | none => []
     | some (pkt, rest) =>
         let h1' := pushIngress s.h1 prio { src := pkt.input, prio := pkt.lane }
@@ -137,11 +137,11 @@ def deliverSw1ToH1 (P : Params) (prio : Nat) (s : St) : List St :=
   else []
 
 def forwardSw0ToSw1 (P : Params) (prio : Nat) (s : St) : List St :=
-  interSwitchTx P s.sw0 s.sw1 sw0FromSw1 sw0ToSw1 prio sw1FromSw0 sw1ToH1 |>.map
+  interSwitchTx P s.sw0 s.sw1 sw0H0 sw0ToSw1 prio sw1FromSw0 sw1ToH1 |>.map
     fun (sw0', sw1') => { s with sw0 := sw0', sw1 := sw1' }
 
 def forwardSw1ToSw0 (P : Params) (prio : Nat) (s : St) : List St :=
-  interSwitchTx P s.sw1 s.sw0 sw1FromSw0 sw1ToSw0 prio sw0FromSw1 sw0ToH0 |>.map
+  interSwitchTx P s.sw1 s.sw0 sw1H1 sw1ToSw0 prio sw0FromSw1 sw0ToH0 |>.map
     fun (sw1', sw0') => { s with sw1 := sw1', sw0 := sw0' }
 
 /-- H0 → SW0 → SW1 → H1. -/

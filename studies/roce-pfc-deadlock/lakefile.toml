@@ -1,0 +1,11 @@
+name = "study-roce-pfc-deadlock"
+version = "0.1.0"
+defaultTargets = ["StudyRoCEPfcDeadlock"]
+
+[[require]]
+name = "dlftk"
+path = "../.."
+
+[[lean_lib]]
+name = "StudyRoCEPfcDeadlock"
+roots = ["StudyRoCEPfcDeadlock", "TwoSwitchLine", "PauseRing", "PauseWFG"]
