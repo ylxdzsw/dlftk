@@ -91,15 +91,19 @@ def popStaged (src : Nat) (s : St) : Option (WirePkt × St) :=
 
 def fabricHostTransmit (h plane : Nat) (s : St) : List St :=
   let Fab := P.fabric
-  Topology.OneLayerClos.Step.hostTransmit Fab h plane s.fabric |>.flatMap fun fab =>
-    match popStaged P h { s with fabric := fab } with
-    | none => [{ s with fabric := fab }]
-    | some (pkt, s') =>
-      let hs' := hostAt Fab s'.fabric h
-      match popEgress hs' plane with
-      | none => [{ s with fabric := fab }]
-      | some (hpkt, _) =>
-        [{ s' with inTransit := s'.inTransit ++ [(hpkt.dest, pkt)] }]
+  let o := overlayAt P s h
+  if o.staged.isEmpty then []
+  else
+    match o.staged with
+    | pkt :: stagedRest =>
+        let fhs := hostAt Fab s.fabric h
+        match (fhs.egress[plane]?).getD [] with
+        | [] => []
+        | hpkt :: _ =>
+            Topology.OneLayerClos.Step.hostTransmit Fab h plane s.fabric |>.map fun fabric =>
+              setOverlay P { s with fabric := fabric, inTransit := s.inTransit ++ [(hpkt.dest, pkt)] } h
+                { o with staged := stagedRest }
+    | [] => []
 
 def fabricSwitchTransmit (plane input out lane : Nat) (s : St) : List St :=
   Topology.OneLayerClos.Step.switchTransmit P.fabric plane input out lane s.fabric |>.map fun fab =>
