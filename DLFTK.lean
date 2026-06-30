@@ -13,3 +13,9 @@ import DLFTK.Switch.Topology.OneLayerClos
 import DLFTK.Falcon.Types
 import DLFTK.Falcon.Model
 import DLFTK.Falcon.Transitions
+import DLFTK.RoCE.Types
+import DLFTK.RoCE.Model
+import DLFTK.RoCE.Host
+import DLFTK.RoCE.Dependency
+import DLFTK.RoCE.Topology.OneLayerClos
+import DLFTK.RoCE.Topology.TwoSwitchLine

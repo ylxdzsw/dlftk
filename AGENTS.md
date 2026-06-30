@@ -21,6 +21,7 @@ studies/_template/  scaffold for new studies
 | `Analysis.lean` | `findDeadlock`, `deadlockFree`, `reachableSaturated` |
 | `UB/` | Two-node store link: Types, Model, Transitions |
 | `Switch/` | CreditConservative, CreditSplit, PFC, Topology/OneLayerClos |
+| `RoCE/` | Host NIC queues, PFC topologies (OneLayerClos, TwoSwitchLine), pause WFG |
 
 **Study** (`studies/<id>/`) — hypothesis, params, claims, prose:
 
@@ -134,6 +135,7 @@ Land in `DLFTK/` first; discharge claims in a new `studies/` folder:
 - UB in-band ACK / credit-return path
 - Posted writes, longer dependency chains
 - Falcon, CXL.mem fabric models
+- RoCE end-to-end (go-back-N, ECN/CNP) extensions
 - CreditSplit vs CreditConservative comparison studies
 
 ## Active studies
